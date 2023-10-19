@@ -6,6 +6,7 @@
 struct directory{
     char *name;
     struct directory *directs;
-    char *isdirect;  
+    char isdirect; 
+    char ishidden;
 };
 #endif

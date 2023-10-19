@@ -19,7 +19,7 @@ int input_directories_count = 0;
 struct directory *all_directories;
 
 int read_input(int argc, char const *argv[]){
-    for(int i=0;i<argc;i++)
+    for(int i=1;i<argc;i++)
     {
         if(strcmp(argv[i], "-a") == 0)
         {
@@ -47,78 +47,95 @@ int read_input(int argc, char const *argv[]){
             v='Y';
         }
         else{
-            all_directories = (struct directory *)malloc(sizeof(struct directory));
+            if(input_directories_count==0){
+                all_directories = (struct directory *)malloc(sizeof(struct directory));
+            }
+            else{
+                all_directories = (struct directory *)realloc(all_directories, sizeof(struct directory)*(input_directories_count+1));
+            }
             all_directories[input_directories_count].name = malloc(strlen(argv[i]) + 1);
             strcpy(all_directories[input_directories_count].name,argv[i]);
+            all_directories[input_directories_count].isdirect = 'Y';
+            all_directories[input_directories_count].ishidden = 'N';
             input_directories_count ++;
         }
     }
     return 0;
 }
 
-void read_in_direcotry(struct directory *all_directories, int input_directories_count){
+void is_it_hidden(char *path){
+    char *token = strtok(path, "/");
+    while(token != NULL){
+        token = strtok(NULL, "/");
+    }
+    if(token[0] == '.'){
+        all_directories[input_directories_count].ishidden = 'Y';
+    }
+    else{
+        all_directories[input_directories_count].ishidden = 'N';
+    }
+}
+int limit = 0;
+void read_in_direcotry(struct directory *outer_directories, int input_directories_count){
     for(int i = 0; i<input_directories_count;i++){
+        limit ++;
         DIR             *dirp;
         struct dirent   *dp;
-
-        dirp       = opendir(all_directories[i].name);
-        if(dirp == NULL) {
-            ///////////perror( progname );
-            exit(EXIT_FAILURE);
-        }
-        char  fullpath[MAXPATHLEN];
         int inner_count = 0;
-        while((dp = readdir(dirp)) != NULL) {
-            struct stat  stat_buffer;
-            struct stat  *pointer = &stat_buffer;
-            if(stat(fullpath, pointer) != 0) {
-                ///////////////perror( progname );
+        if(inner_count==0){
+                outer_directories[i].directs = (struct directory *)malloc(sizeof(struct directory));
             }
-            else if( S_ISDIR( pointer->st_mode )) {
-                printf("%s",all_directories[i].directs[inner_count].name);
-                all_directories[i].directs[inner_count].name = malloc(strlen(fullpath)+1);
-                strcpy(all_directories[i].directs[inner_count].name,fullpath);
-                all_directories[i].directs[inner_count].isdirect = "Y";
-                read_in_direcotry(all_directories[i].directs,inner_count);
+            else{
+                outer_directories[i].directs = (struct directory *)realloc(outer_directories[i].directs, sizeof(struct directory)*(inner_count+1));
             }
-            else if( S_ISREG( pointer->st_mode )) {
-                printf("%s",all_directories[i].directs[inner_count].name);
-                all_directories[i].directs[inner_count].name = malloc(strlen(fullpath)+1);
-                strcpy(all_directories[i].directs[inner_count].name,fullpath);
-                all_directories[i].directs[inner_count].isdirect = "N";
+        //printf("name is: %s, is it directory: %c, i: %d\n",outer_directories[i].name,outer_directories[i].isdirect,i);
+        if(outer_directories[i].isdirect=='Y'){
+            dirp       = opendir(outer_directories[i].name);
+            char  fullpath[MAXPATHLEN];
+            if(dirp == NULL) {
+                ///////////perror( progname );
+                //////printf("error oppening directory\n");
+                ////exit(EXIT_FAILURE);
             }
-            else {
-                printf( "%s is unknown!\n", fullpath );
+            else{
+                while((dp = readdir(dirp)) != NULL || limit <30) {
+                    struct stat  stat_buffer;
+                    struct stat  *pointer = &stat_buffer;
+                    if(dp->d_type == DT_DIR) {
+                        //////printf("2.%s\n",dp->d_name);
+                        outer_directories[i].directs[inner_count].name = malloc(strlen(dp->d_name)+1);
+                        strcpy(outer_directories[i].directs[inner_count].name,dp->d_name);
+                        //////printf("%s",outer_directories[i].directs[inner_count].name);
+                        outer_directories[i].directs[inner_count].isdirect = 'Y';
+                        //printf("going to %s\n",outer_directories[i].directs[inner_count].name);
+                        read_in_direcotry(outer_directories[i].directs,inner_count);
+                    }
+                    else if( dp->d_type == DT_REG ) {
+                        //////printf("3.%s\n",dp->d_name);
+                        outer_directories[i].directs[inner_count].name = malloc(strlen(dp->d_name)+1);
+                        strcpy(outer_directories[i].directs[inner_count].name,dp->d_name);
+                        //////printf("%s",outer_directories[i].directs[inner_count].name);
+                        outer_directories[i].directs[inner_count].isdirect = 'N';
+                    }
+                    else {
+                        //////printf( "%s is unknown!\n", dp->d_name );
+                    }
+                    inner_count+=1;
+                }
+                closedir(dirp);
             }
-            inner_count+=1;
         }
-    closedir(dirp);
     }
-    /*for(int i = 0; i<input_directories_count;i++){
-        int file_count = 0;
-        int direct_count = 0;
-        DIR *dir;
-        struct dirent *entry;
-        dir = opendir(all_directories[i].name);
-        if (dir == NULL){
-            printf("error oppening directory\n");
-        }
-        while(entry == readdir(dir) != NULL){
-            if(entry->d_type == DT_REG){
-                all_directories[i].file[file_count] = entry;
-                file_count ++;
-            }
-            else if(entry->d_type == DT_DIR){
-                all_directories[i].directs[direct_count] = entry;
-                direct_count ++;
-            }
-        }
-    }*/
 }
 
 
 int main(int argc, char const *argv[])
 {
 read_input(argc, argv);
+
+for(int i = 0; i<input_directories_count;i++){
+    printf("%s\n",all_directories[i].name);
+}
+
 read_in_direcotry(all_directories,input_directories_count);
 }

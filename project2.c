@@ -15,40 +15,89 @@ char a='N';
 char n='N';
 char v='N';
 char r='N';
+char p='N';
+char i_switch='N';
+char o='N';
+char *i_pattern;
+char *o_pattern;
 int input_directories_count = 0;
 struct directory *all_directories;
-
+int read_input(int argc, char const *argv[]){
+    int indx=1;
+    while((indx < argc) && (argv[indx][0] == '-')){
+        if(strcmp(argv[indx], "-a") == 0){
+            a='Y';
+        }
+        else if(strcmp(argv[indx], "-i") == 0){
+            i_switch='Y';
+            i_pattern = malloc(strlen(argv[indx+1]) + 1);
+            strcpy(i_pattern, argv[indx+1]);
+            indx++;
+        }
+        else if(strcmp(argv[indx], "-n") == 0){
+            n='Y';
+            v='Y';
+        }
+        else if(strcmp(argv[indx], "-o") == 0){
+            o='Y';
+            o_pattern = malloc(strlen(argv[indx+1]) + 1);
+            strcpy(o_pattern, argv[indx+1]);
+            indx++;
+        }
+        else if(strcmp(argv[indx], "-p") == 0){
+            p='Y';
+        }
+        else if(strcmp(argv[indx], "-r") == 0){
+            r='Y';
+        }
+        else if(strcmp(argv[indx], "-v") == 0){
+            v='Y';
+        }
+        else
+        {
+            printf("Invalid option: %s\n", argv[indx]);
+            return -1;
+        }
+        indx++;
+    }
+    input_directories_count = 0;
+    while (indx < argc) {
+        if (input_directories_count == 0)
+        {
+            all_directories = (struct directory *)malloc(sizeof(struct directory));
+            all_directories[input_directories_count].name = malloc(strlen(argv[indx]) + 1);
+            all_directories[input_directories_count].isdirect = 'Y';
+            strcpy(all_directories[input_directories_count].name, argv[indx]);
+            input_directories_count++;
+        }
+        else
+        {
+            all_directories = (struct directory *)realloc(all_directories, sizeof(struct directory) * (input_directories_count + 1));
+            all_directories[input_directories_count].name = malloc(strlen(argv[indx]) + 1);
+            all_directories[input_directories_count].isdirect = 'Y';
+            strcpy(all_directories[input_directories_count].name, argv[indx]);
+            input_directories_count++;
+        }
+        indx++;
+    }
+    return 0;
+}
+/*
 int read_input(int argc, char const *argv[]){
     for(int i=1;i<argc;i++)
     {
-        if(input_directories_count==0){
-                all_directories= (struct directory *)malloc(sizeof(struct directory));
-            }
-            else{
-                all_directories= (struct directory *)realloc(all_directories, sizeof(struct directory)*(input_directories_count+1));
-            }
-        all_directories[input_directories_count].n_files = -1;
         if(strcmp(argv[i], "-a") == 0)
         {
             a='Y';
         }
         else if(strcmp(argv[i], "-i") == 0){
-            all_directories[input_directories_count].name = malloc(strlen(argv[i+1]) + 1);
-            all_directories[input_directories_count].isdirect = 'Y';
-            strcpy(all_directories[input_directories_count].name,argv[i+1]);
-            all_directories[input_directories_count].switch_type = 'I';
-            input_directories_count ++;
+            
         }
         else if(strcmp(argv[i], "-n") == 0){
             n='Y';
             v='Y';
         }
         else if(strcmp(argv[i], "-o") == 0){
-            all_directories[input_directories_count].name = malloc(strlen(argv[i+1]) + 1);
-            all_directories[input_directories_count].isdirect = 'Y';
-            strcpy(all_directories[input_directories_count].name,argv[i+1]);
-            all_directories[input_directories_count].switch_type = 'O';
-            input_directories_count ++;
         }
         else if(strcmp(argv[i], "-p") == 0){
             
@@ -60,15 +109,45 @@ int read_input(int argc, char const *argv[]){
             v='Y';
         }
         else{
+            if(input_directories_count==0){
+                all_directories= (struct directory *)malloc(sizeof(struct directory));
+            }
+            else{
+                all_directories= (struct directory *)realloc(all_directories, sizeof(struct directory)*(input_directories_count+1));
+            }
             all_directories[input_directories_count].name = malloc(strlen(argv[i]) + 1);
             strcpy(all_directories[input_directories_count].name,argv[i]);
             all_directories[input_directories_count].isdirect = 'Y';
-            all_directories[input_directories_count].switch_type = 'N';
             input_directories_count ++;
         }
     }
     return 0;
 }
+*/
+void copy_file(char *source, char *destination){
+    FILE *fptr1, *fptr2;
+    char c;
+    fptr1 = fopen(source, "r");
+    if (fptr1 == NULL)
+    {
+        printf("Cannot open file %s \n", source);
+        exit(0);
+    }
+    fptr2 = fopen(destination, "w");
+    if (fptr2 == NULL)
+    {
+        printf("Cannot open file %s \n", destination);
+        exit(0);
+    }
+    while ((c = fgetc(fptr1))!= EOF)
+    {
+        fputc(c, fptr2);
+        c = fgetc(fptr1);
+    }
+    fclose(fptr1);
+    fclose(fptr2);
+}
+
 char is_it_real(char *name){
     if(strcmp(name,".")==0 || strcmp(name,"..")==0){
         return 'N';
@@ -108,7 +187,7 @@ void compare_directs(struct directory *d1){
         if(compare=='Y'){
             printf("%s is in both\n",d1[0].directs[j].name);
         }
-        else if(compare=='O'){
+        else if(compare=='O'){ 
             printf("%s is in %s but is older in other\n",d1[0].directs[j].name,d1[1].name);
         }
         else{
@@ -116,6 +195,98 @@ void compare_directs(struct directory *d1){
         }
     }
 }
+
+void read_in_direcotry(struct directory *outer_directories, int input_directories_count)
+{
+    for (int i = 0; i < input_directories_count; i++)
+    {
+        DIR *dirp;
+        struct dirent *dp;
+        int inner_count = 0;
+        if (inner_count == 0)
+        {
+            outer_directories[i].directs = (struct directory *)malloc(sizeof(struct directory));
+        }
+        else
+        {
+            outer_directories[i].directs = (struct directory *)realloc(outer_directories[i].directs, sizeof(struct directory) * (inner_count + 1));
+        }
+        // printf("name is: %s, is it directory: %c, i: %d\n",outer_directories[i].name,outer_directories[i].isdirect,i);
+        if (outer_directories[i].isdirect == 'Y')
+        {
+            outer_directories[i].n_files = -1;
+            dirp = opendir(outer_directories[i].name);
+            char fullpath[MAXPATHLEN];
+            if (dirp == NULL)
+            {
+                ///////////perror( progname );
+                if(v=='Y'){
+                    printf("error oppening a directory\n");
+                }
+                else{
+                    printf("error oppening directory %s\n",outer_directories[i].name);
+                }
+                ////exit(EXIT_FAILURE);
+            }
+            else
+            {
+                while ((dp = readdir(dirp)))
+                {
+                    struct stat stat_buffer;
+                    stat(dp->d_name, &stat_buffer);
+                    if (is_it_real(dp->d_name) == 'N')
+                    {
+                        continue;
+                    }
+                    if (a == 'N' && is_it_hidden(dp->d_name) == 'Y')
+                    {
+                        continue;
+                    }
+                    outer_directories[i].directs[inner_count].mod_time = stat_buffer.st_mtime;
+                    if (dp->d_type == DT_DIR)
+                    {
+                        //////printf("2.%s\n",dp->d_name);
+                        outer_directories[i].directs[inner_count].name = malloc(strlen(dp->d_name) + 1);
+                        strcpy(outer_directories[i].directs[inner_count].name, dp->d_name);
+                        outer_directories[i].n_files += 1;
+                        // printf("directory:%s\n",outer_directories[i].directs[inner_count].name);
+                        // printf("date:%ld\n",outer_directories[i].directs[inner_count].mod_time);
+                        outer_directories[i].directs[inner_count].isdirect = 'Y';
+                        if (r == 'Y')
+                        {
+                            read_in_direcotry(outer_directories[i].directs, inner_count);
+                        }
+                    }
+                    else if (dp->d_type == DT_REG)
+                    {
+                        outer_directories[i].directs[inner_count].name = malloc(strlen(dp->d_name) + 1);
+                        strcpy(outer_directories[i].directs[inner_count].name, dp->d_name);
+                        outer_directories[i].n_files += 1;
+                        // printf("file:%s\n",outer_directories[i].directs[inner_count].name);
+                        // printf("date:%ld\n",outer_directories[i].directs[inner_count].mod_time);
+                        outer_directories[i].directs[inner_count].isdirect = 'N';
+                    }
+                    else
+                    {
+                        if (v == 'Y')
+                        {
+                            printf("%s is unknown!\n", dp->d_name);
+                        }
+                        else
+                        {
+                            printf("unknown file!\n");
+                        }
+                    }
+                    inner_count += 1;
+                }
+                closedir(dirp);
+            }
+        }
+    }
+}
+
+
+/*
 void read_in_direcotry(struct directory *outer_directories, int input_directories_count){
     for(int i = 0; i<input_directories_count;i++){
         DIR             *dirp;
@@ -183,7 +354,7 @@ void read_in_direcotry(struct directory *outer_directories, int input_directorie
         }
     }
 }
-
+*/
 
 int main(int argc, char const *argv[])
 {

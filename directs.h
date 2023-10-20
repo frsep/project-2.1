@@ -9,5 +9,6 @@ struct directory{
     char isdirect; 
     char switch_type;
     long mod_time;
+    int n_files;
 };
 #endif

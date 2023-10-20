@@ -7,6 +7,7 @@ struct directory{
     char *name;
     struct directory *directs;
     char isdirect; 
-    char ishidden;
+    char switch_type;
+    long mod_time;
 };
 #endif

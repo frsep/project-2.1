@@ -22,8 +22,13 @@ int main(int argc, char const *argv[])
 {
     DIR direct *dirct;  
     dirct= opendir(argv[1]);
+    if (dirct == NULL) 
+    { 
+        printf("Could not open current directory" ); 
+        return 0; 
+    }
     struct dirent *entry;
-    while((entry=readdir(dirct) )!= NULL )
+    while((entry=readdir(dirct) ))
     {
         printf("File : %s, %d\n",
                 entry->d_name,
